@@ -1,0 +1,52 @@
+pipeline {
+    // נמשיך להשתמש בסוכן הדינמי בשביל סעיף הבונוס
+    agent {
+        kubernetes {
+            yaml '''
+            apiVersion: v1
+            kind: Pod
+            spec:
+              containers:
+              - name: kubectl
+                image: bitnami/kubectl:latest
+                command: ['cat']
+                tty: true
+            '''
+        }
+    }
+    
+    // הגדרת הפרמטרים שיופיעו בממשק של Jenkins למשתמש
+    parameters {
+        string(name: 'REPLICAS', defaultValue: '2', description: 'Number of replicas for the application')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Image tag to deploy (e.g., specific commit SHA)')
+    }
+    
+    environment {
+        NAMESPACE = "devops"
+        DEPLOYMENT_NAME = "python-app"
+        IMAGE_NAME = "your_dockerhub_username/python-app" // יש להחליף בשם שלך ב-DockerHub
+    }
+
+    stages {
+        stage('Update Deployment') {
+            steps {
+                container('kubectl') {
+                    // עדכון מספר הרפליקות לפי הפרמטר שהוזן
+                    sh "kubectl scale deployment/${DEPLOYMENT_NAME} --replicas=${params.REPLICAS} -n ${NAMESPACE}"
+                    
+                    // עדכון גרסת התמונה (Image tag) לפי הפרמטר שהוזן
+                    sh "kubectl set image deployment/${DEPLOYMENT_NAME} python-app=${IMAGE_NAME}:${params.IMAGE_TAG} -n ${NAMESPACE}"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "Successfully scaled to ${params.REPLICAS} replicas and updated image tag to ${params.IMAGE_TAG}."
+        }
+        failure {
+            echo "Failed to scale or update image tag. Check pipeline logs."
+        }
+    }
+}

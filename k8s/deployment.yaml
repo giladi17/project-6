@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-app
+  namespace: devops
+spec:
+  replicas: 2 # ישתנה דינמית דרך הפייפליין ב-Jenkins
+  selector:
+    matchLabels:
+      app: python-app
+  template:
+    metadata:
+      labels:
+        app: python-app
+    spec:
+      containers:
+      - name: python-app
+        # הנתיב ל-Registry הפרטי שלך ש-Jenkins ידחוף אליו
+        image: <YOUR_DOCKERHUB_USERNAME>/python-app:latest 
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "100m" # הגדרת בסיס לחישוב אחוזים
+          limits:
+            cpu: "500m"
+        volumeMounts:
+        - name: injected-file-volume
+          mountPath: /app/injected-files # כאן יופיע הקובץ שהוזרק
+      volumes:
+      - name: injected-file-volume
+        configMap:
+          name: app-injected-file

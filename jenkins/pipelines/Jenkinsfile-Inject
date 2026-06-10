@@ -1,0 +1,55 @@
+pipeline {
+    // גם כאן אנחנו ממשיכים ליישם את הבונוס של סוכנים דינמיים [2]
+    agent {
+        kubernetes {
+            yaml '''
+            apiVersion: v1
+            kind: Pod
+            spec:
+              containers:
+              - name: kubectl
+                image: bitnami/kubectl:latest
+                command: ['cat']
+                tty: true
+            '''
+        }
+    }
+    
+    // הגדרת פרמטר טקסט - יענה על הדרישה שהתוכן יועבר כפרמטר [1]
+    parameters {
+        text(name: 'FILE_CONTENT', defaultValue: 'Hello from Jenkins!', description: 'Enter the content of the file to inject into the pods')
+    }
+    
+    environment {
+        NAMESPACE = "devops"
+        DEPLOYMENT_NAME = "python-app"
+        CONFIGMAP_NAME = "app-injected-file"
+    }
+
+    stages {
+        stage('Inject File') {
+            steps {
+                container('kubectl') {
+                    // עדכון ה-ConfigMap עם התוכן שהגיע מהפרמטר של ג'נקינס
+                    sh """
+                    kubectl create configmap ${CONFIGMAP_NAME} \
+                      --from-literal=injected.txt="${params.FILE_CONTENT}" \
+                      --dry-run=client -o yaml | kubectl apply -f - -n ${NAMESPACE}
+                    """
+                    
+                    // הפעלה מחדש (Rollout) של הפודים כדי שיטענו את הקובץ החדש מיד
+                    sh "kubectl rollout restart deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "Successfully injected file content and restarted pods."
+        }
+        failure {
+            echo "Failed to inject file. Check pipeline logs."
+        }
+    }
+}

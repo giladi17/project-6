@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-injected-file
+  namespace: devops
+data:
+  # ג'נקינס יחליף את התוכן הזה עם הפרמטר שיקבל בפייפליין
+  injected.txt: "Default content before Jenkins injection" 
