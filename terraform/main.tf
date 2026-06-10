@@ -32,21 +32,26 @@ module "eks" {
   version = "~> 20.0"
 
   cluster_name    = "aui-devops-cluster"
-  cluster_version = "1.29" # גרסת קוברנטיס סטנדרטית ועדכנית
+  cluster_version = "1.29"
 
   vpc_id                   = module.vpc.vpc_id
-  subnet_ids               = module.vpc.private_subnets # אבטחה: הצמתים יהיו ברשת הפרטית
-  control_plane_subnet_ids = module.vpc.public_subnets
+  
+  # התיקון כאן: השרתים וה-Control Plane צריכים להכיר את ה-Private Subnets
+  subnet_ids               = module.vpc.private_subnets 
+  control_plane_subnet_ids = module.vpc.private_subnets # שונה מ-public ל-private
 
-  # הגדרת סביבת ההרצה (Node Group) 
-  # הגדרות אלו יעזרו לנו בסעיף הבונוס של ה-Autoscaling
+  # אופציונלי אך מומלץ: מאפשר גישה לקלאסטר גם מתוך ה-VPC וגם מבחוץ (עם ה-Kubeconfig שלך)
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = true
+
   eks_managed_node_groups = {
     app_nodes = {
       min_size     = 1
-      max_size     = 3 # הכנה לבדיקת עומסים והתרחבות אוטומטית
+      max_size     = 3 
       desired_size = 2
 
       instance_types = ["t3.medium"]
+      ami_type       = "AL2_x86_64" # מומלץ לשנות ל-"AL2023_x86_64_STANDARD" אם תרצה לעבור ל-Amazon Linux 2023 החדש יותר, אבל גם AL2 יעבוד.
     }
   }
 
